@@ -116,14 +116,35 @@ sums = df_ground_truth.sum(axis=1).values[:, np.newaxis]
 best_loss = np.infty
 best_model = None
 
+#### OPACUS
+# import json
+# with open('../data/parameters.json') as f:
+#     parameters = json.load(f)
+# runs = parameters["runs"]
+#
+# r = runs[-1]
+# max_epsilon = r["epsilon"]
+# delta = r["delta"]
+# sensitivity = r["max_records_per_individual"]
+#
+# from opacus import PrivacyEngine
+# privacy_engine = PrivacyEngine(model,
+#                                batch_size=batch_size,
+#                                sample_size=len(sampler),
+#                                alphas=range(2, 32),
+#                                noise_multiplier=1.3,
+#                                max_grad_norm=1,
+#                                target_delta=delta)
+# privacy_engine.attach(optimizer)
+
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
 
 # NON-PRIVATE
 for i in range(num_epochs):
     # loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler)
     loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=None)
-    scheduler.step(loss)
+    # scheduler.step(loss)
 
     print('{}: {:.4f}'.format(i, loss))
 
@@ -151,27 +172,6 @@ for i in range(num_epochs):
     #     break
     #
 
-#
-# # PRIVATE
-# import json
-# with open('../data/parameters.json') as f:
-#     parameters = json.load(f)
-# runs = parameters["runs"]
-#
-# r = runs[-1]
-# max_epsilon = r["epsilon"]
-# delta = r["delta"]
-# sensitivity = r["max_records_per_individual"]
-#
-# from opacus import PrivacyEngine
-# privacy_engine = PrivacyEngine(model,
-#                                batch_size=batch_size,
-#                                sample_size=len(sampler),
-#                                alphas=range(2, 32),
-#                                noise_multiplier=1.1,
-#                                max_grad_norm=1,
-#                                target_delta=delta)
-# privacy_engine.attach(optimizer)
 #
 # # initial result
 # for i in range(num_epochs):
