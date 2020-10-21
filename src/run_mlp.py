@@ -79,8 +79,8 @@ embedder = nn.Embedding(num_embeds, embed_dim).to(device)
 embedders.append(embedder)
 
 num_classes = y.max() - y.min() + 1
-batch_size = 512
-num_epochs = 1000
+batch_size = 514
+num_epochs = 500
 criterion = nn.CrossEntropyLoss()
 
 dataset = SimpleDataset(X, y)
@@ -116,8 +116,8 @@ sums = df_ground_truth.sum(axis=1).values[:, np.newaxis]
 best_loss = np.infty
 best_model = None
 
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
-# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
 
 # NON-PRIVATE
 for i in range(num_epochs):

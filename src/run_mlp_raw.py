@@ -120,7 +120,7 @@ embedder = nn.Embedding(num_embeds, embed_dim).to(device)
 embedders.append(embedder)
 
 batch_size = 514
-num_epochs = 1000
+num_epochs = 500
 criterion = L2Norm
 
 dataset = SimpleDataset(X, y)
@@ -141,8 +141,8 @@ optimizer = torch.optim.RMSprop(model.parameters(), 1e-5)
 best_loss = np.infty
 best_model = None
 
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
-# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs * len(dataloader_train))
 
 for i in range(num_epochs):
     # loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler)
