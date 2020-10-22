@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, '../runtime/scripts')
 import metric, score
 
+INDEX_COLS = ["epsilon", "neighborhood", "year", "month"]
 EPS_RUN = {1.0: 0,
            2.0: 1,
            10.0: 12
@@ -17,7 +18,7 @@ scorer = metric.Deid2Metric()
 def get_data():
     df_incidents = pd.read_csv('../data/incidents.csv')
     df_submission_format = pd.read_csv('../data/submission_format.csv',
-                                       index_col=["epsilon", "neighborhood", "year", "month"])
+                                       index_col=INDEX_COLS)
     df_ground_truth = score.get_ground_truth(df_incidents, df_submission_format)
     return df_incidents, df_ground_truth, df_submission_format
 
@@ -71,6 +72,7 @@ def get_score(actual, predicted):
 
     scores = np.ones(raw_penalties.shape[0])
     scores -= raw_penalties.sum(axis=1)
+    scores = np.clip(scores, a_min=0.0, a_max=1.0)
 
     return scores, raw_penalties
 

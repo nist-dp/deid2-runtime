@@ -78,16 +78,17 @@ if __name__ == '__main__':
                                        max_grad_norm=args.max_grad_norm,
                                        target_delta=delta)
         privacy_engine.attach(optimizer)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.num_epochs * len(dataloader_train))
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.num_epochs * len(dataloader_train))
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
 
     # Training loop
     best_loss = np.infty
     best_model = None
     missing_rows = None
     for i in range(args.num_epochs):
-        loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=None)
-        scheduler.step(loss)
+        loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler)
+        # loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=None)
+        # scheduler.step(loss)
 
         log = f"Train Epoch: {i}\tLoss: {loss:.6f}"
         if args.epsilon is not None:

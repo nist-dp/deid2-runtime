@@ -1,42 +1,5 @@
-import os
-import copy
-import itertools
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder, Normalizer, OneHotEncoder
-
-import sys  
-sys.path.insert(0, '../runtime/scripts')
-import metric, score
-
-from utils.utils_nn import *
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-scorer = metric.Deid2Metric()
-
-def get_submission(probs, df_ground_truth, df_submission_format):
-    sums = df_ground_truth.sum(axis=1).values
-    hist = (sums[:, np.newaxis] * probs).astype(int)
-
-    df_submission = df_submission_format.copy()
-    epsilons = df_submission.index.levels[0]
-    for eps in epsilons:
-        df_submission.loc[eps, :] = hist
-
-    return df_submission
-
-def get_score(actual, predicted):
-    n_rows, _n_incidents = actual.shape
-    raw_penalties = []
-    for i in range(n_rows):
-        components_i = scorer._penalty_components(actual[i, :], predicted[i, :])
-        raw_penalties.append(components_i)
-    raw_penalties = np.array(raw_penalties)
-
-    scores = np.ones(raw_penalties.shape[0])
-    scores -= raw_penalties.sum(axis=1)
-
-    return scores, raw_penalties
+from utils.utils_general import *
+import pdb
 
 def naively_add_laplace_noise(arr, scale: float, seed: int = None):
     """
@@ -50,21 +13,36 @@ def naively_add_laplace_noise(arr, scale: float, seed: int = None):
     result = np.clip(arr + noise, a_min=0, a_max=np.inf)
     return result.round().astype(np.int)
 
-# import data
-df_incidents = pd.read_csv('../data/incidents.csv')
-
-INDEX_COLS = ["epsilon", "neighborhood", "year", "month"]
-df_submission_format = pd.read_csv('../data/submission_format.csv', index_col=INDEX_COLS)
-
-df_ground_truth_all = score.get_ground_truth(df_incidents, df_submission_format)
+# get data
+df_incidents, df_ground_truth_all, df_submission_format = get_data()
 df_ground_truth = df_ground_truth_all.loc[1.0]
 
-sums = df_ground_truth.sum(axis=1).values[:, np.newaxis]
+SENSITIVTY = 20
+MAX_EPSILON = 10
+STEP = 0.05
+df = []
+for epsilon in np.arange(STEP, MAX_EPSILON+STEP, STEP):
+    df_private = naively_add_laplace_noise(df_ground_truth, scale=SENSITIVTY / epsilon)
+    df_private['epsilon'] = round(epsilon, 2)
+    df.append(df_private.reset_index())
+df = pd.concat(df)
+cols = list(df.columns[-1:]) + list(df.columns[:-1])
+df = df[cols]
+df.sort_values(INDEX_COLS, inplace=True)
 
-# TODO get max records per user and epsilon from parameters.json
+# just to check this matches the benchmark score
+for epsilon in [1.0, 2.0, 10.0]:
+    mask = df['epsilon'] == epsilon
+    outputs = df[mask]
+    outputs = outputs.set_index(INDEX_COLS).values
+    scores, penalties = get_score(df_ground_truth.values, outputs)
+    print('{:.3f}'.format(scores.sum()))
+    print(penalties.mean(axis=0))
 
-def get_noisy_sums(arr, epsilon: float, c: float, sensitivity: int = 20, seed: int = None):
-    scale = sensitivity/(c*epsilon)
-    noisy_sums = naively_add_laplace_noise(arr, scale = scale)
+df.set_index(INDEX_COLS, inplace=True)
+df = df.sum(axis=1).to_frame()
+df.columns = ['count']
+df.to_csv('./data/laplace_sums.csv')
 
-    return noisy_sums
+
+
