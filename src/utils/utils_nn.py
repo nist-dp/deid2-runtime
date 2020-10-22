@@ -95,7 +95,6 @@ def train(model, dataloader, optimizer, criterion, device, scheduler=None, alpha
     loss = np.array(losses).mean()
     return loss
 
-
 def evaluate(model, dataloader, criterion, device):
     model.eval()
     losses = []
@@ -114,6 +113,30 @@ def evaluate(model, dataloader, criterion, device):
     loss = np.array(losses).mean()
     logits = torch.cat(_logits)
     return loss, logits
+
+def KLDivLoss(P, Q, T=1):
+    kld = nn.KLDivLoss(size_average=False)
+    P_soft = F.softmax(P)
+    Q_soft = F.softmax(Q)
+    return kld(P_soft.log(), Q_soft)
+
+def SoftCrossEntropyLoss(logits, target):
+    logprobs = F.log_softmax(logits, dim=1)
+    loss = -(target * logprobs).sum() / logits.shape[0]
+    return loss
+
+def L2Norm(input, target):
+    return torch.norm(input - target, p=2)
+
+def L1Norm(input, target):
+    return torch.norm(input - target, p=1)
+
+def LPNorm(logits, target, alpha=1):
+    probs = F.softmax(logits, dim=1)
+    loss = 0
+    loss += alpha * torch.norm(probs - target, p=2) * 100
+    loss += (1 - alpha) * torch.norm(probs - target, p=1)
+    return loss
 
 class UserSampler(Sampler):
     def __init__(self, user_to_idxs):
@@ -145,3 +168,13 @@ class UserSampler(Sampler):
 
     def __len__(self):
         return len(self.idxs)
+
+def get_sampler(residents):
+    resident_to_idxs = {}
+    for i, resident in enumerate(residents):
+        if resident in resident_to_idxs.keys():
+            resident_to_idxs[resident].append(i)
+        else:
+            resident_to_idxs[resident] = [i]
+    sampler = UserSampler(resident_to_idxs)
+    return sampler
