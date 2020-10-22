@@ -95,6 +95,7 @@ def get_args():
 
     # neural network arguments
     parser.add_argument('--embed_dim', type=int, default=None)
+    parser.add_argument('--hidden_dim', type=int, default=None)
     parser.add_argument('--num_layers', type=int, default=3)
     parser.add_argument('--batch_size', type=int, default=139)
     parser.add_argument('--num_epochs', type=int, default=100)
@@ -143,6 +144,7 @@ if __name__ == '__main__':
 
     # define model
     num_classes = y.max() - y.min() + 1
+    hidden_dim = embed_dim // 2 if args.hidden_dim is None else args.hidden_dim
     hidden_dims = [embed_dim // 2] * (args.num_layers - 1) + [1024]
     model = Net_embedder(embedders, hidden_dims, num_classes)
     print(model)
@@ -169,10 +171,10 @@ if __name__ == '__main__':
     for i in range(args.num_epochs):
         loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler)
 
-        log = f"Train Epoch: {i}"
+        log = f"Train Epoch: {i}\tLoss: {loss:.6f}"
         if args.epsilon is not None:
             epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(delta)
-            log += f"\t(ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
+            log += f" (ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
             if epsilon > max_epsilon:
                 break
         print(log)
