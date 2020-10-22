@@ -12,12 +12,12 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # neural network arguments
-    parser.add_argument('--embed_dim', type=int, default=None)
-    parser.add_argument('--hidden_dim', type=int, default=None)
-    parser.add_argument('--num_layers', type=int, default=3)
-    parser.add_argument('--batch_size', type=int, default=139)
+    parser.add_argument('--embed_dim', type=int, default=1024)
+    parser.add_argument('--hidden_dim', type=int, default=1024)
+    parser.add_argument('--num_layers', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=514)
     parser.add_argument('--num_epochs', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=1e-5)
+    parser.add_argument('--lr', type=float, default=5e-5)
     # privacy arguments
     parser.add_argument('--epsilon', type=float, default=None, choices=[1.0, 2.0, 10.0])
     parser.add_argument('--epsilon_sum', type=float, default=None)
