@@ -115,7 +115,7 @@ if __name__ == '__main__':
             _, outputs = evaluate(model, dataloader_test, criterion, device)
             probs = nn.functional.softmax(outputs, dim=1)
             probs = probs.clone().detach().numpy()
-            outputs = (probs * sums).astype(int)
+            outputs = np.round(probs * sums).astype(int)
             outputs[outputs < 0] = 0
 
             scores, penalties = get_score(df_ground_truth.values, outputs)

@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
             outputs = df_submission.values.copy()
             outputs[outputs < 0] = 0
-            scores, penalties = get_score(df_ground_truth.values, outputs.astype(int))
+            scores, penalties = get_score(df_ground_truth.values, np.round(outputs).astype(int))
             print('{:.3f}'.format(scores.sum()))
             print(penalties.mean(axis=0))
 
