@@ -11,14 +11,13 @@ import metric, score
 INDEX_COLS = ["epsilon", "neighborhood", "year", "month"]
 EPS_RUN = {1.0: 0,
            2.0: 1,
-           10.0: 12
+           10.0: 2
            }
 scorer = metric.Deid2Metric()
 
 def get_data():
     df_incidents = pd.read_csv('../data/incidents.csv')
-    df_submission_format = pd.read_csv('../data/submission_format.csv',
-                                       index_col=INDEX_COLS)
+    df_submission_format = pd.read_csv('../data/submission_format.csv', index_col=INDEX_COLS)
     df_ground_truth = score.get_ground_truth(df_incidents, df_submission_format)
     return df_incidents, df_ground_truth, df_submission_format
 
@@ -86,3 +85,31 @@ def get_submission(probs, df_ground_truth, df_submission_format):
         df_submission.loc[eps, :] = hist
 
     return df_submission
+
+def naively_add_laplace_noise(arr, scale, seed=None):
+    """
+    Add Laplace random noise of the desired scale to the dataframe of counts. Noisy counts will be
+    clipped to [0,∞) and rounded to the nearest positive integer.
+    Expects a numpy array and a Laplace scale.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+    noise = np.random.laplace(scale=scale, size=arr.size).reshape(arr.shape)
+    result = arr + noise
+    result = np.clip(result, a_min=0, a_max=np.inf)
+    result = result.round().astype(np.int)
+    return result
+
+def naively_add_gaussian_noise(arr, scale, seed=None):
+    """
+    Add Laplace random noise of the desired scale to the dataframe of counts. Noisy counts will be
+    clipped to [0,∞) and rounded to the nearest positive integer.
+    Expects a numpy array and a Laplace scale.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+    noise = np.random.normal(scale=scale, size=arr.size).reshape(arr.shape)
+    result = arr + noise
+    result = np.clip(result, a_min=0, a_max=np.inf)
+    result = result.round().astype(np.int)
+    return result

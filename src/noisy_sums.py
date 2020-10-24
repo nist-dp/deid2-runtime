@@ -18,8 +18,9 @@ df_incidents, df_ground_truth_all, df_submission_format = get_data()
 df_ground_truth = df_ground_truth_all.loc[1.0]
 
 SENSITIVTY = 20
-MAX_EPSILON = 10
-STEP = 0.05
+MAX_EPSILON = 1
+STEP = 0.01
+
 df = []
 for epsilon in np.arange(STEP, MAX_EPSILON+STEP, STEP):
     df_private = df_ground_truth.sum(axis=1).to_frame()
@@ -32,6 +33,19 @@ cols = list(df.columns[-1:]) + list(df.columns[:-1])
 df = df[cols]
 df.sort_values(INDEX_COLS, inplace=True)
 df.to_csv('./data/laplace_sums.csv')
+
+STEP = 0.05
+df = []
+for epsilon in np.arange(STEP, MAX_EPSILON+STEP, STEP):
+    df_private = naively_add_laplace_noise(df_incidents, scale=SENSITIVTY / epsilon)
+    df_private['epsilon'] = round(epsilon, 2)
+    df.append(df_private.reset_index())
+df = pd.concat(df)
+cols = list(df.columns[-1:]) + list(df.columns[:-1])
+df = df[cols]
+
+df.sort_values(INDEX_COLS, inplace=True)
+df.to_csv('./data/laplace_counts.csv', index=False)
 
 # # just to check this matches the benchmark score
 # for epsilon in [1.0, 2.0, 10.0]:

@@ -12,10 +12,10 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # neural network arguments
-    parser.add_argument('--embed_dim', type=int, default=None)
-    parser.add_argument('--hidden_dim', type=int, default=None)
-    parser.add_argument('--num_layers', type=int, default=3)
-    parser.add_argument('--batch_size', type=int, default=139)
+    parser.add_argument('--embed_dim', type=int, default=1024)
+    parser.add_argument('--hidden_dim', type=int, default=1024)
+    parser.add_argument('--num_layers', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=514)
     parser.add_argument('--num_epochs', type=int, default=100)
     parser.add_argument('--lr', type=float, default=1e-5)
     # privacy arguments
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     embedders = [nn.Embedding(num_embeds, embed_dim).to(device)]
 
     num_classes = y.max() - y.min() + 1
-    hidden_dim = embed_dim // 2 if args.hidden_dim is None else args.hidden_dim
+    hidden_dim = embed_dim * len(embedders) // 2 if args.hidden_dim is None else args.hidden_dim
     hidden_dims = [hidden_dim] * (args.num_layers - 1) + [1024]
     model = Net_embedder(embedders, hidden_dims, len(incidents))
     print(model)
@@ -94,8 +94,8 @@ if __name__ == '__main__':
         if args.epsilon is not None:
             epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(delta)
             log += f" (ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
-            if epsilon > max_epsilon:
-                break
+            # if epsilon > max_epsilon:
+            #     break
         print(log)
 
         if loss < best_loss:

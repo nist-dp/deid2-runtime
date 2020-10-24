@@ -26,7 +26,8 @@ class Net(nn.Module):
         self.fc_hidden = nn.ModuleList()
         for k in range(len(hidden_dims)-1):
             self.fc_hidden.append(nn.Linear(hidden_dims[k], hidden_dims[k+1]))
-            self.fc_hidden.append(nn.ReLU())
+            self.fc_hidden.append(nn.Tanh())
+            # self.fc_hidden.append(nn.ReLU())
             self.fc_hidden.append(nn.Dropout(dp_rate))
         self.fc_out = nn.Linear(hidden_dims[-1], num_classes)
 

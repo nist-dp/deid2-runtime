@@ -17,7 +17,7 @@ def get_args():
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--batch_size', type=int, default=514)
     parser.add_argument('--num_epochs', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=5e-4)
     # privacy arguments
     parser.add_argument('--epsilon', type=float, default=None, choices=[1.0, 2.0, 10.0])
     parser.add_argument('--epsilon_sum', type=float, default=None)
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     if args.epsilon is not None:
         max_epsilon, delta, sensitivity = get_priv_params(args.epsilon)
         privacy_engine = PrivacyEngine(model,
-                                       batch_size=args.batch_size,
+                                       batch_size=args.batch_size * 20 if args.unif_sampling else args.batch_size,
                                        sample_size=len(sampler),
                                        alphas=list(range(2, 32)),
                                        noise_multiplier=args.noise_multiplier,
@@ -104,8 +104,16 @@ if __name__ == '__main__':
         if args.epsilon is not None:
             epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(delta)
             log += f" (ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}"
-            if epsilon > max_epsilon:
-                break
+            print(log)
+            # if epsilon > max_epsilon:
+            #     break
+            # # For experimentation to see the tradeoff
+            # remaining_epsilon = max_epsilon - epsilon
+            # remaining_epsilon = min(1, round(remaining_epsilon, 2))
+            # mask = df_laplace_sums['epsilon'] == remaining_epsilon
+            # noisy_sums = df_laplace_sums[mask].values[:, -1]
+            # sums = noisy_sums[:, np.newaxis]
+
         print(log)
 
         if loss < best_loss:
