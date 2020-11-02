@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -70,7 +71,7 @@ class Net_embedder(nn.Module):
         out = self.fc_out(out)
         return out
 
-def train(model, dataloader, optimizer, criterion, device, scheduler=None, alpha=None):
+def train(model, dataloader, optimizer, criterion, device, scheduler=None, alpha=None, reduction=None):
     model.train()
     losses = []
     for batch_idx, (X, y) in enumerate(tqdm(dataloader)):
@@ -84,6 +85,10 @@ def train(model, dataloader, optimizer, criterion, device, scheduler=None, alpha
             loss = criterion(logits, y, alpha=alpha)
         else:
             loss = criterion(logits, y)
+        if reduction == 'mean':
+            loss = loss.mean()
+        if reduction == 'sum':
+            loss = loss.sum()
 
         optimizer.zero_grad()
         loss.backward()
@@ -96,7 +101,7 @@ def train(model, dataloader, optimizer, criterion, device, scheduler=None, alpha
     loss = np.array(losses).mean()
     return loss
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate(model, dataloader, criterion, device, reduction=None):
     model.eval()
     losses = []
     _logits = []
@@ -108,6 +113,10 @@ def evaluate(model, dataloader, criterion, device):
 
         logits = model(X)
         loss = criterion(logits, y)
+        if reduction == 'mean':
+            loss = loss.mean()
+        if reduction == 'sum':
+            loss = loss.sum()
 
         losses.append(loss.item())
         _logits.append(logits.clone().detach().cpu())
@@ -127,10 +136,11 @@ def SoftCrossEntropyLoss(logits, target):
     return loss
 
 def L2Norm(input, target):
-    return torch.norm(input - target, p=2)
+    return torch.norm(input - target, p=2, dim=1)
+    # return torch.norm(input - target, p=2)
 
 def L1Norm(input, target):
-    return torch.norm(input - target, p=1)
+    return torch.norm(input - target, p=1, dim=1)
 
 def LPNorm(logits, target, alpha=1):
     probs = F.softmax(logits, dim=1)
@@ -170,12 +180,69 @@ class UserSampler(Sampler):
     def __len__(self):
         return len(self.idxs)
 
-def get_sampler(residents):
-    resident_to_idxs = {}
-    for i, resident in enumerate(residents):
-        if resident in resident_to_idxs.keys():
-            resident_to_idxs[resident].append(i)
+def get_user_mapping(users):
+    users_to_idxs = {}
+    for i, user in enumerate(users):
+        if user in users_to_idxs.keys():
+            users_to_idxs[user].append(i)
         else:
-            resident_to_idxs[resident] = [i]
-    sampler = UserSampler(resident_to_idxs)
+            users_to_idxs[user] = [i]
+    return users_to_idxs
+
+def get_sampler(users):
+    users_to_idxs = get_user_mapping(users)
+    sampler = UserSampler(users_to_idxs)
     return sampler
+
+class UserDataset(Dataset):
+    def __init__(self, X, y, users_mapping):
+        self.X = X
+        self.y = y
+        self.users_mapping = users_mapping
+
+    def __len__(self):
+        return len(self.users_mapping)
+
+    def __getitem__(self, user_idx):
+        idxs = self.users_mapping[user_idx]
+        return self.X[idxs], self.y[idxs], np.ones(len(idxs)) / len(idxs)
+
+def collate_variable_size(batch):
+    result = []
+    num_vars = len(batch[0])
+    for i in range(num_vars):
+        var = [x[i] for x in batch]
+        var = list(itertools.chain(*var))
+        result.append(torch.tensor(var))
+    return result
+
+def train_weighted(model, dataloader, optimizer, criterion, device, scheduler=None, alpha=None, reduction=None):
+    model.train()
+    losses = []
+    for batch_idx, (X, y, weights) in enumerate(tqdm(dataloader)):
+        X, y, weights = X.to(device), y.to(device), weights.to(device)
+        if y.type() == 'torch.cuda.DoubleTensor':
+            y = y.float()
+        # X, y = X.to(device).float(), y.to(device).float()
+
+        logits = model(X)
+        if alpha is not None:
+            loss = criterion(logits, y, alpha=alpha)
+        else:
+            loss = criterion(logits, y)
+        loss = loss * weights
+        if reduction == 'mean':
+            loss = loss.mean()
+        if reduction == 'sum':
+            loss = loss.sum()
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if scheduler is not None:
+            scheduler.step()
+
+        losses.append(loss.item())
+
+    loss = np.array(losses).mean()
+    return loss

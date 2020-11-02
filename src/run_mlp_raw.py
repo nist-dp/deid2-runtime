@@ -86,7 +86,7 @@ if __name__ == '__main__':
     best_model = None
     missing_rows = None
     for i in range(args.num_epochs):
-        loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler)
+        loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=scheduler, reduction='sum')
         # loss = train(model, dataloader_train, optimizer, criterion, device, scheduler=None)
         # scheduler.step(loss)
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
             best_loss = loss
             best_model = copy.deepcopy(model)
 
-            _, outputs = evaluate(best_model, dataloader_test, criterion, device)
+            _, outputs = evaluate(best_model, dataloader_test, criterion, device, reduction='mean')
             outputs = outputs.clone().detach().numpy()
 
             df_submission = pd.DataFrame(outputs, columns=incidents)
@@ -124,6 +124,14 @@ if __name__ == '__main__':
 
             outputs = df_submission.values.copy()
             outputs[outputs < 0] = 0
+            scores, penalties = get_score(df_ground_truth.values, np.round(outputs).astype(int))
+            print('{:.3f}'.format(scores.sum()))
+            print(penalties.mean(axis=0))
+
+            outputs = df_submission.values.copy()
+            outputs[outputs < 0] = 0
+            probs = outputs / outputs.sum(axis=1)[:, np.newaxis]
+            outputs[probs < scorer.threshold] = 0
             scores, penalties = get_score(df_ground_truth.values, np.round(outputs).astype(int))
             print('{:.3f}'.format(scores.sum()))
             print(penalties.mean(axis=0))

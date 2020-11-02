@@ -86,7 +86,7 @@ def get_submission(probs, df_ground_truth, df_submission_format):
 
     return df_submission
 
-def naively_add_laplace_noise(arr, scale, seed=None):
+def naively_add_laplace_noise(arr, scale, seed=None, clip_and_round=True):
     """
     Add Laplace random noise of the desired scale to the dataframe of counts. Noisy counts will be
     clipped to [0,∞) and rounded to the nearest positive integer.
@@ -94,10 +94,15 @@ def naively_add_laplace_noise(arr, scale, seed=None):
     """
     if seed is not None:
         np.random.seed(seed)
-    noise = np.random.laplace(scale=scale, size=arr.size).reshape(arr.shape)
+    if isinstance(scale, np.ndarray):
+        assert(scale.shape == arr.shape)
+        noise = np.random.laplace(scale=scale)
+    else:
+        noise = np.random.laplace(scale=scale, size=arr.size).reshape(arr.shape)
     result = arr + noise
-    result = np.clip(result, a_min=0, a_max=np.inf)
-    result = result.round().astype(np.int)
+    if clip_and_round:
+        result = np.clip(result, a_min=0, a_max=np.inf)
+        result = result.round().astype(np.int)
     return result
 
 def naively_add_gaussian_noise(arr, scale, seed=None):
@@ -108,7 +113,10 @@ def naively_add_gaussian_noise(arr, scale, seed=None):
     """
     if seed is not None:
         np.random.seed(seed)
-    noise = np.random.normal(scale=scale, size=arr.size).reshape(arr.shape)
+    if isinstance(scale, np.ndarray):
+        noise = np.random.normal(scale=scale)
+    else:
+        noise = np.random.normal(scale=scale, size=arr.size).reshape(arr.shape)
     result = arr + noise
     result = np.clip(result, a_min=0, a_max=np.inf)
     result = result.round().astype(np.int)

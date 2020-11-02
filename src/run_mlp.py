@@ -55,10 +55,10 @@ if __name__ == '__main__':
 
     y = df_incidents['incident_type'].values
     X = enc.transform(df_incidents['feat'].values)[:, np.newaxis]
-    sampler = None if args.unif_sampling else get_sampler(df_incidents['sim_resident'].values)
 
     # set up dataloaders
     dataset = SimpleDataset(X, y)
+    sampler = None if args.unif_sampling else get_sampler(df_incidents['sim_resident'].values)
     dataloader_train = DataLoader(dataset, batch_size=args.batch_size, sampler=sampler, shuffle=args.unif_sampling)
 
     X_test = enc.transform(feats)[:, np.newaxis]
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     if args.epsilon is not None:
         max_epsilon, delta, sensitivity = get_priv_params(args.epsilon)
         privacy_engine = PrivacyEngine(model,
-                                       batch_size=args.batch_size * 20 if args.unif_sampling else args.batch_size,
+                                       batch_size=args.batch_size,
                                        sample_size=len(sampler),
                                        alphas=list(range(2, 32)),
                                        noise_multiplier=args.noise_multiplier,

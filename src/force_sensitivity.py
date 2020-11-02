@@ -103,7 +103,6 @@ def run(dataset, measurements, workloads,  eps=1.0, delta=0.0, sensitivity=1.0, 
     return answers
 
 # get data
-
 df_incidents, df_ground_truth_all, df_submission_format = get_data()
 df_incidents.reset_index(drop=True)
 
@@ -146,7 +145,76 @@ df_incidents_shuffled = df_incidents.sample(frac=1)
 for s in np.arange(20)+1:
     df = df_incidents_shuffled.groupby(['sim_resident', 'feat']).head(s).reset_index(drop=True)
     frac_kept = df.shape[0] / df_incidents.shape[0]
+
     df_gt = score.get_ground_truth(df, df_submission_format).loc[1.0]
+    scores, penalties = get_score(df_ground_truth.values, df_gt.values)
+    sampling_score = scores.sum() * len(runs)
+
+    df_s = df.groupby(attrs + ['sim_resident']).size().to_frame()
+    df_s.columns = ['sensitivity']
+    df_s = df_s.reset_index().groupby(attrs).max()[['sensitivity']]
+    df_s.reset_index(inplace=True)
+    df_s = pd.pivot_table(df_s, values='sensitivity', columns=['incident_type'], index=['neighborhood', 'year', 'month'])
+    df_s.fillna(0, inplace=True)
+    df_s = pd.merge(df_gt.reset_index()[['neighborhood', 'year', 'month']], df_s.reset_index(), how='left',
+                    left_on=['neighborhood', 'year', 'month'], right_on=['neighborhood', 'year', 'month'])
+    df_s.set_index(['neighborhood', 'year', 'month'], inplace=True)
+    missing = set(np.arange(174)) - set(df_s.columns.values)
+    for i in missing:
+        df_s[i] = 0
+    df_s = df_s[np.arange(174)]
+    df_s.fillna(0, inplace=True)
+    df_s[df_s == 0] = 0
+
+    # for HDMM
+    df['year'] = 0
+    df['month'] -= 1
+
+    print("Sensitivity Threshold={}, Fraction={:.8f}".format(s, frac_kept))
+    laplace_score, gaussian_score, hdmm_score, hdmm0_score = 0, 0, 0, 0
+    for r in runs:
+        epsilon = r["epsilon"]
+        delta = r["delta"]
+
+        # Laplace Mechanism
+        scale = df_s.values / epsilon
+        outputs = naively_add_laplace_noise(df_gt.values, scale=scale)
+        scores, penalties = get_score(df_ground_truth.values, outputs)
+        laplace_score += scores.sum()
+
+        # Gaussian Mechanism
+        scale = np.sqrt(df_s.values * 2 * np.log(2 / delta)) / epsilon
+        df_private = naively_add_gaussian_noise(df_gt, scale=scale)
+        outputs = df_private.values
+        scores, penalties = get_score(df_ground_truth.values, outputs)
+        gaussian_score += scores.sum()
+
+    results.append([s,
+                    round(frac_kept, 8),
+                    round(sampling_score, 3),
+                    round(laplace_score, 3),
+                    round(gaussian_score, 3),
+                    ])
+
+    print('Sampling: {:.3f}'.format(sampling_score))
+    print('Laplace: {:.3f}'.format(laplace_score))
+    print('Gaussian: {:.3f}'.format(gaussian_score))
+    print('\n')
+
+result_cols = ['sensitivity', 'frac_kept', 'sampling', 'laplace', 'gaussian']
+df_results = pd.DataFrame(results, columns=result_cols)
+
+#############
+
+results = []
+df_incidents_shuffled = df_incidents.sample(frac=1)
+for s in np.arange(20)+1:
+    df = df_incidents_shuffled.groupby(['sim_resident', 'feat']).head(s).reset_index(drop=True)
+    frac_kept = df.shape[0] / df_incidents.shape[0]
+
+    df_gt = score.get_ground_truth(df, df_submission_format).loc[1.0]
+    scores, penalties = get_score(df_ground_truth.values, df_gt.values)
+    sampling_score = scores.sum() * len(runs)
 
     # for HDMM
     df['year'] = 0
@@ -200,21 +268,21 @@ for s in np.arange(20)+1:
 
     results.append([s,
                     round(frac_kept, 8),
+                    round(sampling_score, 3),
                     round(laplace_score, 3),
                     round(gaussian_score, 3),
                     round(hdmm_score, 3),
                     round(hdmm0_score, 3)
                     ])
 
+    print('Sampling: {:.3f}'.format(sampling_score))
     print('Laplace: {:.3f}'.format(laplace_score))
     print('Gaussian: {:.3f}'.format(gaussian_score))
     print('HDMM: {:.3f}'.format(hdmm_score))
     print('HDMM (delta=0): {:.3f}'.format(hdmm0_score))
     print('\n')
 
-result_cols = ['sensitivity', 'frac_kept', 'laplace', 'gaussian', 'hdmm', 'hdmm0']
+result_cols = ['sensitivity', 'frac_kept', 'sampling', 'laplace', 'gaussian', 'hdmm', 'hdmm0']
 df_results = pd.DataFrame(results, columns=result_cols)
-
-pdb.set_trace()
 
 
