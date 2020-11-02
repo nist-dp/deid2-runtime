@@ -57,16 +57,16 @@ df.fillna(0, inplace=True)
 
 # df = df_user_type_private
 
-queries = []
-for col in ['year', 'month', 'neighborhood', 'incident_type']:
-    queries.append(df_user_type_public.reset_index()[col].unique())
-queries.append(np.arange(2) + 1) # num_calls
-queries = list(itertools.product(*queries))
-df_extra = pd.DataFrame(queries, columns=cols_attr + ['num_calls'])
-df_extra['count'] = 0
-df = pd.concat([df.reset_index(), df_extra])
-df.sort_values(cols_attr, inplace=True)
-df.set_index(cols_attr + ['num_calls'], inplace=True)
+# queries = []
+# for col in ['year', 'month', 'neighborhood', 'incident_type']:
+#     queries.append(df_user_type_public.reset_index()[col].unique())
+# queries.append(np.arange(2) + 1) # num_calls
+# queries = list(itertools.product(*queries))
+# df_extra = pd.DataFrame(queries, columns=cols_attr + ['num_calls'])
+# df_extra['count'] = 0
+# df = pd.concat([df.reset_index(), df_extra])
+# df.sort_values(cols_attr, inplace=True)
+# df.set_index(cols_attr + ['num_calls'], inplace=True)
 
 total_score = 0
 for epsilon in [1.0, 2.0, 10.0]:
@@ -110,10 +110,23 @@ for epsilon in [1.0, 2.0, 10.0]:
     # outputs[probs < scorer.threshold] = 0
 
     scores, penalties = get_score(df_ground_truth.values, outputs)
-    score = scores.sum()
+    score_eps = scores.sum()
     penalties = np.around(penalties.mean(axis=0), 3)
-    total_score += score
+    total_score += score_eps
 
-    print("Epsilon {}: {:.3f}\t{}".format(epsilon, score, penalties))
+    print("Epsilon {}: {:.3f}\t{}".format(epsilon, score_eps, penalties))
+
+print("Total score: {}".format(total_score))
+
+print("Naive baseline")
+total_score = 0
+for epsilon in [1.0, 2.0, 10.0]:
+    df_laplace = naively_add_laplace_noise(df_ground_truth, 20 / epsilon)
+    scores, penalties = get_score(df_ground_truth.values, df_laplace.values)
+    score_eps = scores.sum()
+    penalties = np.around(penalties.mean(axis=0), 3)
+    total_score += score_eps
+
+    print("Epsilon {}: {:.3f}\t{}".format(epsilon, score_eps, penalties))
 
 print("Total score: {}".format(total_score))
