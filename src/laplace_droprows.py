@@ -10,17 +10,20 @@ df_incidents, df_ground_truth_all, df_submission_format = get_data()
 df_incidents.reset_index(drop=True)
 df_ground_truth = df_ground_truth_all.loc[1.0]
 
-df_counts = df_incidents.groupby(['sim_resident']).size().to_frame()
+# dropping rows for neighborhood-months with large number of calls
+df_counts = df_incidents.groupby(['neighborhood', 'month']).size().to_frame()
 df_counts.columns = ['count']
+df_counts.sort_values('count', inplace=True)
+df_counts.reset_index(inplace=True)
+df_counts.reset_index(inplace=True)
+df_incidents = pd.merge(df_incidents, df_counts, left_on=['neighborhood', 'month'], right_on=['neighborhood', 'month'])
+df_incidents = df_incidents.sort_values('index').reset_index(drop=True)
 
 results = []
 for sensitivity in np.arange(20) + 1:
-    # mask = df_counts['count'] <= s
-    # residents = df_counts[mask].index.values
-    # mask = df_incidents['sim_resident'].isin(residents)
-    # df_private = df_incidents[mask].reset_index(drop=True)
+    df_private = df_incidents.copy()
 
-    df_private = df_incidents.sample(frac=1).reset_index() # randomly shuffle rows
+    # df_private = df_private.sample(frac=1).reset_index() # randomly shuffle rows
     df_private = df_private.groupby(['sim_resident']).head(sensitivity) # take first <sensitivity> rows from each resident
 
     frac_kept = df_private.shape[0] / df_incidents.shape[0]
