@@ -62,5 +62,4 @@ for sensitivity in np.arange(20) + 1:
 
 result_cols = ['sensitivity', 'frac_kept', 'laplace', 'gaussian']
 df_results = pd.DataFrame(results, columns=result_cols)
-
-pdb.set_trace()
+print(df_results.sort_values('laplace', ascending=False))
