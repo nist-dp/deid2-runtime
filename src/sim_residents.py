@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import pdb
 
-df_matched = pd.read_csv('./data/matched_incidents.csv')
+df_matched = pd.read_csv('./data/911_data/matched_incidents.csv')
 df_matched = df_matched.sort_values(['sim_resident', 'neighborhood', 'year', 'month', 'incident_type'])
 df_matched.reset_index(drop=True, inplace=True)
 
@@ -67,4 +67,4 @@ for year in df_incidents['year'].unique()[::-1]:
     df = pd.read_csv(output)
     print(df.shape)
     
-    df.to_csv('./data/incidents_{}.csv'.format(year))
+    df.to_csv('./data/911_data/incidents_{}.csv'.format(year))
