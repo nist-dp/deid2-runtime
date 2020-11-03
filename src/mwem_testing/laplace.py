@@ -55,18 +55,68 @@ df = pd.merge(df_user_type_public, df_user_type_private, how='left',
 df = df[['count']]
 df.fillna(0, inplace=True)
 
+# --------------------
 # df = df_user_type_private
 
+# --------------------
 # queries = []
 # for col in ['year', 'month', 'neighborhood', 'incident_type']:
 #     queries.append(df_user_type_public.reset_index()[col].unique())
-# queries.append(np.arange(2) + 1) # num_calls
+# queries.append(np.arange(1) + 1) # num_calls
 # queries = list(itertools.product(*queries))
 # df_extra = pd.DataFrame(queries, columns=cols_attr + ['num_calls'])
 # df_extra['count'] = 0
 # df = pd.concat([df.reset_index(), df_extra])
 # df.sort_values(cols_attr, inplace=True)
+# df = df.drop_duplicates()
 # df.set_index(cols_attr + ['num_calls'], inplace=True)
+
+# --------------------
+# print(df.shape)
+#
+# from sklearn.preprocessing import OneHotEncoder
+# enc = OneHotEncoder(handle_unknown='ignore')
+# encoded_cols = enc.fit_transform(df_public[['incident_type', 'month']]).toarray()
+#
+# from sklearn.decomposition import PCA
+# pca_encoded = PCA(n_components=2).fit_transform(encoded_cols)
+# pca_encoded = pd.DataFrame(pca_encoded)
+# pca_encoded['neighborhood'] = df_public['neighborhood']
+# pca_encoded = pca_encoded.groupby('neighborhood').mean()
+#
+# from sklearn.neighbors import NearestNeighbors
+# neigh = NearestNeighbors(n_neighbors=5)
+# neigh.fit(pca_encoded)
+#
+# list_neighbors = []
+# num_neighbors = 1
+# for i in range(pca_encoded.shape[0]):
+#     _, neighbors = neigh.kneighbors(pca_encoded.values[i][np.newaxis, :], num_neighbors + 1)
+#     neighbors = neighbors.flatten()[1:]
+#     list_neighbors.append(neighbors)
+#
+# df_extra = []
+# for neighborhood, neighbors in enumerate(list_neighbors):
+#     mask = df_public['neighborhood'].isin(neighbors)
+#     x = df_public.loc[mask, ['month', 'incident_type']].drop_duplicates()
+#     x['neighborhood'] = neighborhood
+#     x['year'] = 2019
+#     x['count'] = 0
+#     for num_calls in [1, 2]:
+#         x_ = x.copy()
+#         x_['num_calls'] = num_calls
+#         x_.set_index(cols_attr + ['num_calls'], inplace=True)
+#         x_.sort_index(inplace=True)
+#         df_extra.append(x_)
+# df_extra = pd.concat(df_extra)
+# x = pd.concat([df, df_extra])
+# x.sort_index(inplace=True)
+# x = x.reset_index().drop_duplicates().set_index(cols_attr + ['num_calls'])
+# df = x
+#
+# print(df.shape)
+
+
 
 total_score = 0
 for epsilon in [1.0, 2.0, 10.0]:
@@ -81,20 +131,20 @@ for epsilon in [1.0, 2.0, 10.0]:
     df_output.fillna(0, inplace=True)
     df_output.columns = df_output.columns.values
 
-    # add missing rows
+    # add missing cols
     num_incidents = len(incidents)
     missing_cols = list(set(np.arange(num_incidents)) - set(df_output.columns.values))
     for col in missing_cols:
         df_output.loc[:, col] = 0
     df_output = df_output[np.arange(num_incidents)]
 
-    # add missing cols
+    # add missing rows
     missing_rows_idxs = pd.merge(df_submission_format.loc[1.0], df_output, how='left', left_index=True, right_index=True)
     mask = missing_rows_idxs.isnull().any(axis=1)
     missing_rows_idxs = missing_rows_idxs[mask].reset_index()[['neighborhood', 'year', 'month']].values
 
     df_output.reset_index(inplace=True)
-    row_template = df_output.values[0]
+    row_template = np.zeros(shape=df_output.values[0].shape)
     for idx in missing_rows_idxs:
         row = row_template.copy()
         row[:len(idx)] = idx
