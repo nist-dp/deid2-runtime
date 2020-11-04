@@ -34,7 +34,7 @@ df_911 = df_911[cols].astype(int).sort_values(cols)
 df_911['year'] = 2019
 
 # we just ignore the extra incidents that they generated (>159)
-incidents = np.arange(df_911.max()['incident_type'])
+incidents = np.arange(df_911.max()['incident_type'] + 1)
 
 df_submission_format = df_submission_format[incidents.astype(str)]
 mask = df_911['incident_type'].isin(incidents)
