@@ -64,16 +64,42 @@ df_queries = df_user_type_public.copy()
 
 # TODO: add to the index of df_queries (df_queries has a single column = 'count'. You can fill this in with anything (such as 0), since we ignore this column anyway.
 # example code of if you wanted to add the queries from the private dataset
+"""
 df_extra = df_user_type_private.copy()
 df_queries = pd.concat([df_queries, df_extra])
+"""
 # example code of adding a specific query
+"""
 row_template = df_queries.reset_index().loc[[0]]
 row_template.loc[:, ['neighborhood', 'month', 'incident_type', 'num_calls']] = [1, 2, 3, 4]
 df_queries.reset_index(inplace=True)
 df_queries = pd.concat([df_queries, row_template])
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+"""
+
+# add adjacent months
+df_queries.reset_index(inplace=True)
+df_extra = [df_queries]
+delta = [1, 2, 3]
+delta += [12-d for d in delta]
+print(delta)
+for x in delta:
+    df = df_queries.copy()
+    df['month'] -= 1
+    df['month'] = (df['month'] + x) % 12
+    df['month'] += 1
+    df_extra.append(df)
+
+    #testing
+    test = np.unique((df['month'] - df_queries['month'] + 12) % 12)
+    assert(len(test) == 1)
+    assert(test[0] == x)
+
+df_queries = pd.concat(df_extra)
+df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
 # remove duplicate rows
+df_queries['count'] = 0
 df_queries.reset_index(inplace=True)
 df_queries.drop_duplicates(inplace=True)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
@@ -82,6 +108,10 @@ df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 df_queries = pd.merge(df_queries, df_user_type_private, how='left', left_index=True, right_index=True, suffixes=['_public',''])
 df_queries = df_queries[['count']]
 df_queries.fillna(0, inplace=True)
+
+print(df_queries.shape)
+print((df_queries['count'] > 0).mean())
+print(df_queries['count'].sum())
 
 # print("Naive baseline")
 # total_score = 0
@@ -207,3 +237,56 @@ print("Total score: {}".format(total_score))
 # df = x
 #
 # print(df.shape)
+
+# --------------------
+# from sklearn.metrics import mutual_info_score
+# def calc_MI(x, y, bins):
+#     c_xy = np.histogram2d(x, y, bins)[0]
+#     mi = mutual_info_score(None, None, contingency=c_xy)
+#     return mi
+#
+# pdb.set_trace()
+#
+# x = score.get_ground_truth(df_public, df_submission_format)
+# x = x.loc[1.0]
+# x = x.copy().values
+# bins = 5
+# n = x.shape[1]
+# matMI = np.zeros((n, n))
+# for i in np.arange(n):
+#     for j in np.arange(i+1, n):
+#         matMI[i, j] = calc_MI(x[:, i], x[:, j], bins)
+# incidents_mi_sorted = np.dstack(np.unravel_index(np.argsort(matMI.ravel()), (n, n)))[0][::-1]
+#
+# print(df_queries.shape)
+# df_queries.reset_index(inplace=True)
+#
+# df_extra = [df_queries]
+# for i in [1]:
+#     incidents_mi = incidents_mi_sorted[i]
+#     mask = df_queries['incident_type'].isin(incidents_mi)
+#     df = df_queries[mask]
+#     for i in incidents_mi:
+#         for num_calls in np.arange(3) + 1:
+#             df.loc[:, 'incident_type'] = i
+#             df.loc[:, 'num_calls'] = num_calls
+#             df_extra.append(df.copy())
+# df_queries = pd.concat(df_extra)
+# df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+
+# ---------
+# df_queries.reset_index(inplace=True)
+# mask = (df_queries['count'] > 0) & (df_queries['num_calls'] > 1)
+# df = df_queries[mask]
+#
+# df_extra = [df_queries]
+# for num_calls in np.arange(5) + 1:
+#     df.loc[:, 'num_calls'] = num_calls
+#     df_extra.append(df.copy())
+# df_queries = pd.concat(df_extra)
+# df_queries['count'] = 0
+# df_queries.drop_duplicates(inplace=True)
+# df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+# df_queries = pd.merge(df_queries, df_user_type_private, how='left', left_index=True, right_index=True, suffixes=['_public',''])
+# df_queries = df_queries[['count']]
+# df_queries.fillna(0, inplace=True)
