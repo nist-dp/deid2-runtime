@@ -85,9 +85,9 @@ delta += [12-d for d in delta]
 print(delta)
 for x in delta:
     df = df_queries.copy()
-    df['month'] -= 1
+    df['month'] -= 1 # scales months to values from 0-11
     df['month'] = (df['month'] + x) % 12
-    df['month'] += 1
+    df['month'] += 1 # changes it back to values 1-12
     df_extra.append(df)
 
     #testing
@@ -97,6 +97,8 @@ for x in delta:
 
 df_queries = pd.concat(df_extra)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+
+
 
 # remove duplicate rows
 df_queries['count'] = 0
