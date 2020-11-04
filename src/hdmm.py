@@ -205,6 +205,27 @@ df_template = df_public
 df_template = df_template.groupby(list(domain.config.keys())).size().to_frame()
 df_template.columns = ['count']
 df_template.reset_index(inplace=True)
+df_template.sort_values(cols_attr + ['num_calls'], inplace=True)
+
+# add adjacent months
+# df_extra = [df_template]
+# delta = [1, 2]
+# delta += [12-d for d in delta]
+# for x in delta:
+#     df = df_template.copy()
+#     df['month'] = (df['month'] + x) % 12
+#     df_extra.append(df)
+#
+#     # testing
+#     test = np.unique((df['month'] - df_template['month'] + 12) % 12)
+#     assert(len(test) == 1)
+#     assert(test[0] == x)
+#
+# df_template = pd.concat(df_extra)
+# df_template['count'] = 0
+# df_template.drop_duplicates(inplace=True)
+# df_template.sort_values(cols_attr + ['num_calls'], inplace=True)
+# df_template.reset_index(drop=True, inplace=True)
 
 query_idxs = []
 for col in list(domain.config.keys()):

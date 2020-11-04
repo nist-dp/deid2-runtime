@@ -52,8 +52,8 @@ df_user_type_private = get_df_user_type(df_private, cols, cols_attr)
 df_user_type_public = get_df_user_type(df_public, cols, cols_attr)
 
 # get ground truth for private dataset
-df_ground_truth_all = score.get_ground_truth(df_private, df_submission_format)
-df_ground_truth = df_ground_truth_all.loc[1.0]
+df_gt_all = score.get_ground_truth(df_private, df_submission_format)
+df_gt = df_gt_all.loc[1.0]
 
 # get queries
 """
@@ -61,7 +61,6 @@ The index of dq_queries is the list of queries. Right now it uses the public dat
 We then do a left join with the private dataset to get the answer for every query in df_queries
 """
 df_queries = df_user_type_public.copy()
-
 # TODO: add to the index of df_queries (df_queries has a single column = 'count'. You can fill this in with anything (such as 0), since we ignore this column anyway.
 # example code of if you wanted to add the queries from the private dataset
 """
@@ -82,7 +81,6 @@ df_queries.reset_index(inplace=True)
 df_extra = [df_queries]
 delta = [1, 2, 3]
 delta += [12-d for d in delta]
-print(delta)
 for x in delta:
     df = df_queries.copy()
     df['month'] -= 1 # scales months to values from 0-11
@@ -90,7 +88,7 @@ for x in delta:
     df['month'] += 1 # changes it back to values 1-12
     df_extra.append(df)
 
-    #testing
+    # testing
     test = np.unique((df['month'] - df_queries['month'] + 12) % 12)
     assert(len(test) == 1)
     assert(test[0] == x)
@@ -98,13 +96,25 @@ for x in delta:
 df_queries = pd.concat(df_extra)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
+# add extra num_calls
+df_queries.reset_index(inplace=True)
+mask = (df_queries['count'] > 0) & (df_queries['num_calls'] > 1)
+df = df_queries[mask]
 
+df_extra = [df_queries]
+for num_calls in np.arange(2) + 1:
+    df = df_queries.copy()
+    df.loc[:, 'num_calls'] = num_calls
+    df_extra.append(df)
+df_queries = pd.concat(df_extra)
+df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
 # remove duplicate rows
 df_queries['count'] = 0
 df_queries.reset_index(inplace=True)
 df_queries.drop_duplicates(inplace=True)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+df_queries.sort_index(inplace=True)
 
 # join with private dataset to look up the count for each query
 df_queries = pd.merge(df_queries, df_user_type_private, how='left', left_index=True, right_index=True, suffixes=['_public',''])
@@ -115,19 +125,27 @@ print(df_queries.shape)
 print((df_queries['count'] > 0).mean())
 print(df_queries['count'].sum())
 
-# print("Naive baseline")
-# total_score = 0
-# for epsilon in [1.0, 2.0, 10.0]:
-#     df_laplace = naively_add_laplace_noise(df_ground_truth, 20 / epsilon)
-#     scores, penalties = get_score(df_ground_truth.values, df_laplace.values)
-#     score_eps = scores.sum()
-#     penalties = np.around(penalties.mean(axis=0), 3)
-#     total_score += score_eps
-#
-#     print("Epsilon {}: {:.3f}\t{}".format(epsilon, score_eps, penalties))
-#
-# print("Total score: {}".format(total_score))
+# run DP mechanism
+outputs = score.get_ground_truth(df_public, df_submission_format)
+outputs = outputs.loc[1.0]
+print("\nRelease public dataset as private (just to get a sense of how good it is)")
+scores, penalties = get_score(df_gt.values, outputs.values)
+total_score = 3 * scores.sum()
+print("Total score: {}".format(total_score))
 
+print("\nLaplace benchmark")
+total_score = 0
+for epsilon in [1.0, 2.0, 10.0]:
+    df_laplace = naively_add_laplace_noise(df_gt, 20 / epsilon)
+    scores, penalties = get_score(df_gt.values, df_laplace.values)
+    score_eps = scores.sum()
+    penalties = np.around(penalties.mean(axis=0), 3)
+    total_score += score_eps
+
+    print("Epsilon {}: {:.3f}\t{}".format(epsilon, score_eps, penalties))
+print("Total score: {}".format(total_score))
+
+print("\nOur method")
 total_score = 0
 for epsilon in [1.0, 2.0, 10.0]:
     df_output = df_queries.copy()
@@ -163,17 +181,18 @@ for epsilon in [1.0, 2.0, 10.0]:
     df_output.sort_values(['neighborhood', 'year', 'month'], inplace=True)
     df_output.set_index(['neighborhood', 'year', 'month'], inplace=True)
 
-    outputs = df_output.values.copy()
+    # outputs = df_output.values.copy()
     # sums = df_ground_truth.values.sum(axis=1)[:, np.newaxis]
     # probs = np.divide(outputs, sums, out=np.zeros_like(outputs, dtype=float), where=sums != 0)
-    # outputs[probs < scorer.threshold] = 0
+    # outputs[(probs < scorer.threshold + 0.02) & (probs > scorer.threshold - 0.02)] = 0
 
-    scores, penalties = get_score(df_ground_truth.values, outputs)
+    outputs = df_output.values.copy()
+    scores, penalties = get_score(df_gt.values, outputs)
     score_eps = scores.sum()
     penalties = np.around(penalties.mean(axis=0), 3)
-    total_score += score_eps
-
     print("Epsilon {}: {:.3f}\t{}".format(epsilon, score_eps, penalties))
+
+    total_score += score_eps
 
 print("Total score: {}".format(total_score))
 
@@ -276,19 +295,19 @@ print("Total score: {}".format(total_score))
 # df_queries = pd.concat(df_extra)
 # df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
-# ---------
-# df_queries.reset_index(inplace=True)
-# mask = (df_queries['count'] > 0) & (df_queries['num_calls'] > 1)
-# df = df_queries[mask]
+# -------
+# df_gt_public = score.get_ground_truth(df_public, df_submission_format)
+# df_gt_public = df_gt_public.loc[1.0]
+# df_gt_public_norm = df_gt_public / df_gt_public.sum()
+# df_gt_public_norm.reset_index(inplace=True)
+# df_gt_public_norm = pd.melt(df_gt_public_norm, id_vars=['neighborhood', 'year', 'month'], value_vars=incidents.astype(str))
+# df_gt_public_norm.columns = ['neighborhood', 'year', 'month', 'incident_type', 'frac']
+# df_gt_public_norm['incident_type'] = df_gt_public_norm['incident_type'].astype(int)
 #
-# df_extra = [df_queries]
-# for num_calls in np.arange(5) + 1:
-#     df.loc[:, 'num_calls'] = num_calls
-#     df_extra.append(df.copy())
-# df_queries = pd.concat(df_extra)
-# df_queries['count'] = 0
-# df_queries.drop_duplicates(inplace=True)
+# mask = df_gt_public_norm['frac'] > 1e-5
+# df_gt_public_norm = df_gt_public_norm[mask]
+# df_queries.reset_index(inplace=True)
+# df_queries = pd.merge(df_queries, df_gt_public_norm, left_on=['neighborhood', 'year', 'month', 'incident_type'], right_on=['neighborhood', 'year', 'month', 'incident_type'])
+# del df_queries['frac']
 # df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
-# df_queries = pd.merge(df_queries, df_user_type_private, how='left', left_index=True, right_index=True, suffixes=['_public',''])
-# df_queries = df_queries[['count']]
-# df_queries.fillna(0, inplace=True)
+# df_queries.sort_index(inplace=True)
