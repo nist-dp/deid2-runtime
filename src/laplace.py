@@ -2,8 +2,8 @@ import argparse
 from utils.utils_general import *
 import pdb
 
-def get_df_user_type(df, cols, cols_attr):
-    df_user_type = df.groupby(cols).size().to_frame()
+def get_df_user_type(df, cols_attr):
+    df_user_type = df.groupby(['sim_resident'] + cols_attr).size().to_frame()
     df_user_type.columns = ['num_calls']
     df_user_type.reset_index(cols_attr, inplace=True)
     df_user_type = df_user_type.reset_index().groupby(cols_attr + ['num_calls']).size().to_frame()
@@ -48,8 +48,8 @@ df_private = df_911
 df_public = df_incidents
 
 # convert to dataframe of "user types"
-df_user_type_private = get_df_user_type(df_private, cols, cols_attr)
-df_user_type_public = get_df_user_type(df_public, cols, cols_attr)
+df_user_type_private = get_df_user_type(df_private, cols_attr)
+df_user_type_public = get_df_user_type(df_public, cols_attr)
 
 # get ground truth for private dataset
 df_gt_all = score.get_ground_truth(df_private, df_submission_format)
@@ -58,7 +58,7 @@ df_gt = df_gt_all.loc[1.0]
 # get queries
 """
 The index of dq_queries is the list of queries. Right now it uses the public dataset to generate the list of queries.
-We then do a left join with the private dataset to get the answer for every query in df_queries
+We then doing a left join with the private dataset to get the answer for every query in df_queries
 """
 df_queries = df_user_type_public.copy()
 # TODO: add to the index of df_queries (df_queries has a single column = 'count'. You can fill this in with anything (such as 0), since we ignore this column anyway.
@@ -109,7 +109,7 @@ for num_calls in np.arange(2) + 1:
 df_queries = pd.concat(df_extra)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
-# remove duplicate rows
+# remove duplicate queries
 df_queries['count'] = 0
 df_queries.reset_index(inplace=True)
 df_queries.drop_duplicates(inplace=True)
@@ -177,7 +177,6 @@ for epsilon in [1.0, 2.0, 10.0]:
         row[:len(idx)] = idx
         df_output.loc[len(df_output), :] = row
 
-    df_output = df_output.astype(int)
     df_output.sort_values(['neighborhood', 'year', 'month'], inplace=True)
     df_output.set_index(['neighborhood', 'year', 'month'], inplace=True)
 
