@@ -1,0 +1,4 @@
+run command: python main.py
+
+No additional dependencies outside of the base docker environment are required.
+External data sources are located in ./data_public. For our final solution, we simply use the development dataset as our only source of public data.

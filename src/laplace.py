@@ -76,7 +76,7 @@ df_queries = pd.concat([df_queries, row_template])
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 """
 
-# add adjacent months
+##### add adjacent months
 df_queries.reset_index(inplace=True)
 df_extra = [df_queries]
 delta = [1, 2, 3]
@@ -96,7 +96,14 @@ for x in delta:
 df_queries = pd.concat(df_extra)
 df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 
-# add extra num_calls
+# remove duplicate queries
+df_queries['count'] = 0
+df_queries.reset_index(inplace=True)
+df_queries.drop_duplicates(inplace=True)
+df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+df_queries.sort_index(inplace=True)
+
+##### add extra num_calls
 df_queries.reset_index(inplace=True)
 mask = (df_queries['count'] > 0) & (df_queries['num_calls'] > 1)
 df = df_queries[mask]
@@ -308,5 +315,67 @@ print("Total score: {}".format(total_score))
 # df_queries.reset_index(inplace=True)
 # df_queries = pd.merge(df_queries, df_gt_public_norm, left_on=['neighborhood', 'year', 'month', 'incident_type'], right_on=['neighborhood', 'year', 'month', 'incident_type'])
 # del df_queries['frac']
+# df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+# df_queries.sort_index(inplace=True)
+
+
+
+###############
+# df_gt_public = score.get_ground_truth(df_public, df_submission_format)
+# df_gt_public = df_gt_public.loc[1.0]
+# x = df_gt.values
+# x = x / x.sum(axis=1)[:, np.newaxis]
+# df_gt_public_norm = df_gt_public.copy()
+# df_gt_public_norm.loc[:] = x
+# df_gt_public_norm.fillna(0, inplace=True)
+#
+# from sklearn.metrics.pairwise import cosine_similarity
+# similarities = cosine_similarity(df_gt_public_norm)
+# df_similarities = pd.DataFrame(similarities, index=df_gt_public.index, columns=df_gt_public.index)
+#
+#
+# from sklearn.metrics.pairwise import euclidean_distances
+# distances = euclidean_distances(df_gt_public_norm)
+# df_distances = pd.DataFrame(distances, index=df_gt_public.index, columns=df_gt_public.index)
+# df_similarities = 1 - df_distances
+#
+#
+# df_queries.reset_index(inplace=True)
+# keys = df_gt_public.reset_index()[['neighborhood', 'year', 'month']].values
+#
+# threshold = 0.9
+# df_extra = [df_queries]
+# from tqdm import tqdm
+# for key in tqdm(keys):
+#     sims = df_similarities.loc[tuple(key)]
+#     mask = sims > threshold
+#     sims = sims[mask]
+#     if len(sims) == 0:
+#         continue
+#
+#     mask = (df_queries[['neighborhood', 'year', 'month']] == key).all(axis=1)
+#     df_template = df_queries[mask]
+#     df = pd.concat([df_template] * len(sims)).reset_index(drop=True)
+#
+#     keys_add = np.array([list(x) for x in sims.index.values])
+#     keys_add = np.repeat(keys_add, df_template.shape[0], axis=0)
+#     df[['neighborhood', 'year', 'month']] = keys_add
+#     df_extra.append(df)
+#
+#     #
+#     # pdb.set_trace()
+#     #
+#     # for key_add in sims.index.values:
+#     #     df = df_template.copy()
+#     #     df[['neighborhood', 'year', 'month']] = key_add
+#     #     df_extra.append(df)
+#
+# df_queries = pd.concat(df_extra)
+# df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
+#
+# # remove duplicate queries
+# df_queries['count'] = 0
+# df_queries.reset_index(inplace=True)
+# df_queries.drop_duplicates(inplace=True)
 # df_queries.set_index(cols_attr + ['num_calls'], inplace=True)
 # df_queries.sort_index(inplace=True)
